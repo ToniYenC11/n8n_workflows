@@ -21,6 +21,14 @@ In the future, the workflow will add an additional field to automate accomplishm
 # The Workflow
 ![alt text](images/image-2.png)
 
+## Overview
+
+This n8n workflow automates the end-to-end process of retrieving approved or pending "Pass Slip" applications from the company's ERP, enriching them with specific "Purpose of Business" details, formatting the data for report generation, and transmitting the payload to a local Express.js service for Docx generation.
+
+- **Trigger**: Scheduled (Cron) – Runs on the 13th, 15th, and last 3 days of the month.
+- **Target**: the ERP domain
+- **Downstream Integration**: `http://localhost:4000/generate-report`
+
 ## Scheduled Trigger
 
 The first two nodes (not numbered) triggers a Javascript to run the check for the current day of the month. Usual cutoff for payroll occurs every 15th and 30th (or last day of the month). To accomodate this, the workflow is designed to trigger every 13th and 28/29th day of the month, or two days from the last day of cuttoff.
@@ -82,4 +90,30 @@ within the network or via VPN. Do not publish workflow in the internet to avoid 
 
 To finally enter the personal page of the user, one must send a GET request to the same source since the first node. This will then result in a different result inside its data output
 
-## Nodes 
+## Nodes 4-5: Data Acquisition and Filtering
+
+### Node 4: GET FIltered Pass Slips
+Performs a query with date filters (`start_date`, `end_date`) based on current payroll cycles (1–15th or 16–end).
+
+### Node 5: Get List of Pass Slips within Date
+- **Logic**: Uses Regex to scrape `<tbody>` of the returned HTML table
+- **Filtering**: Only processes records where the destination matches "Alternative Work Arrangement" and the status is "Approved as Official" or "Pending for Approval."
+- **Output**: Returns a JSON array of records with their unique id, `startDate`, and `endDate`.
+
+## Nodes 6-8: Deep Fetch of Purposes for Each Pass Slip Applications
+
+### Node 6: Loop Through Each Pass Slips' Details
+Iterates through the list of IDs from Node 5. For every ID, it performs a granular GET request to the specific "View" page to scrape data not available in the summary table.
+
+### Node 7: Extract Purpose of Business
+Uses a targeted Regex to scan the full HTML content of the View page for the `for="BasePassSlip_purpose"` label and captures the associated text within the `form-control-static` div.
+
+### Node 8: Format "purpose" as lists
+Sanitizes the string content of the purpose field. Splits lines containing hyphens ($-$) into a JSON array (`purposeList`) to make it machine-readable for the document template.
+
+## Nodes 9-10
+### Node 9: JSON Format to Send to Express JS Server
+Normalizes the data structure. It calculates the reporting period (e.g., JULY 01, 2026 - JULY 15, 2026) and structures the data into an array of row objects (duration, workAssignment, date, accomplishments).
+
+### Node 10: Generate Automatic Download Link
+Sends the finalized JSON object as a POST request to the local Express JS server (`/generate-report`) with an `x-api-key` header for security.

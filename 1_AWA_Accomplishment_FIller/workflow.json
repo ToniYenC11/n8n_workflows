@@ -1,0 +1,470 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://erp.asti.dost.gov.ph/index.php?r=site/login",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $json.headers['set-cookie'] ? $json.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '' }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://erp.asti.dost.gov.ph/index.php?r=site/login"
+            },
+            {
+              "name": "Origin",
+              "value": "https://erp.asti.dost.gov.ph"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "LoginForm[username]",
+              "value": "INSERT-USERNAME-HERE"
+            },
+            {
+              "name": "LoginForm[password]",
+              "value": "INSERT-PASSWORD-HERE"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "2. POST Login (No Redirect)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        160,
+        -384
+      ],
+      "id": "3ada750c-367f-44b6-86b6-5abede0e5f13"
+    },
+    {
+      "parameters": {
+        "url": "https://erp.asti.dost.gov.ph/index.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $json.headers['set-cookie'] ? $json.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '' }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://erp.asti.dost.gov.ph/index.php?r=site/login"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "name": "3. GET Protected Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        352,
+        -384
+      ],
+      "id": "6789eceb-59e4-4e51-9507-a6a3ef2d8870"
+    },
+    {
+      "parameters": {
+        "url": "https://erp.asti.dost.gov.ph/index.php?r=pmis/passSlip/passSlip/index",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "BasePassSlip[start_date]",
+              "value": "={{ $now.day <= 15 ? $now.startOf('month').toFormat('yyyy-MM-dd') : $now.set({day: 16}).toFormat('yyyy-MM-dd') }}"
+            },
+            {
+              "name": "BasePassSlip[end_date]",
+              "value": "={{ $now.day <= 15 ? $now.set({day: 15}).toFormat('yyyy-MM-dd') : $now.endOf('month').toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $('2. POST Login (No Redirect)').first().json.headers['set-cookie'] ? $('2. POST Login (No Redirect)').first().json.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '' }}"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Referer",
+              "value": "https://erp.asti.dost.gov.ph/index.php"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "redirect": {
+            "redirect": {}
+          },
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "name": "4. GET Filtered Pass Slips",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -272,
+        -128
+      ],
+      "id": "f89c91f4-b168-49ef-92c2-ef08961f8057"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.data;\nconst passSlips = [];\n\nconst tbodyMatch = html.match(/<tbody>([\\s\\S]*?)<\\/tbody>/);\n\nif (tbodyMatch) {\n    const rows = tbodyMatch[1].match(/<tr[^>]*>([\\s\\S]*?)<\\/tr>/g);\n    \n    if (rows) {\n        for (const row of rows) {\n            const cells = [];\n            const tdRegex = /<td[^>]*>([\\s\\S]*?)<\\/td>/g;\n            let tdMatch;\n            \n            while ((tdMatch = tdRegex.exec(row)) !== null) {\n                cells.push(tdMatch[1].replace(/<[^>]*>/g, '').trim());\n            }\n\n            const idMatch = row.match(/id=(\\d+)/);\n            const id = idMatch ? idMatch[1] : null;\n            \n            if (cells.length >= 7 && id) {\n                const destination = cells[5];\n                const status = cells[6];\n                if (destination === \"Alternative Work Arrangement\" && (status === 'Approved as Official' || status === 'Pending for Approval')) {\n                    passSlips.push({\n                        json: {\n                            id: id,\n                            startDate: cells[0],\n                            endDate: cells[1],\n                        }\n                    });\n                }\n            }\n        }\n    }\n}\n\nreturn passSlips;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -128
+      ],
+      "id": "027fa474-5838-4755-b9c9-7f355e2142dc",
+      "name": "5. Get List of Pass Slips within Date"
+    },
+    {
+      "parameters": {
+        "url": "=https://erp.asti.dost.gov.ph/index.php?r=pmis/passSlip/passSlip/view&id={{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{ $('2. POST Login (No Redirect)').first().json.headers['set-cookie'] ? $('2. POST Login (No Redirect)').first().json.headers['set-cookie'].map(c => c.split(';')[0]).join('; ') : '' }}"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        320,
+        -128
+      ],
+      "id": "2a10c817-f3ed-4c0a-8bc8-1abddfe52b59",
+      "name": "6. Loop Through Each Pass Slips' Details"
+    },
+    {
+      "parameters": {
+        "url": "https://erp.asti.dost.gov.ph/index.php?r=site/login",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "name": "1. GET Initial Cookie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -48,
+        -384
+      ],
+      "id": "65c2c353-9182-4c23-8e1e-d09198878116"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const html = $json.data;\n\nconst purposeRegex = /for=\\\"BasePassSlip_purpose\\\"[^>]*>Purpose of Business<\\/label>[\\s\\S]*?form-control-static\\\">([\\s\\S]*?)<\\/div>/;\nconst match = html.match(purposeRegex);\n\nconst sourceItem = $('5. Get List of Pass Slips within Date').item.json;\n\nreturn {\n    json: {\n        ...sourceItem,\n        purpose: match ? match[1].trim() : \"Purpose not found\"\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        96
+      ],
+      "id": "fd048c47-e17e-4622-b1c3-68a56743484f",
+      "name": "7. Extract Purpose of Business"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const purpose = $json.purpose || '';\n\nconst normalized = purpose.replace(/\\r?\\n/g, ' ');\nconst items = normalized\n  .split(/(?:^|\\s)-\\s+/)\n  .map(s => s.trim())\n  .filter(s => s.length > 0);\n\nreturn {\n    json: {\n        ...$json,\n        purposeList: items\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        96
+      ],
+      "id": "0b1726a0-c000-417e-86ee-36a879452e26",
+      "name": "8. Format \"purpose\" as lists"
+    },
+    {
+      "parameters": {
+        "jsCode": "const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];\n\nfunction parseErpDate(str) {\n    const m = str.match(/^([A-Za-z]+)\\s+(\\d{1,2}),\\s+(\\d{4})$/);\n    if (!m) throw new Error(`Unparseable date: ${str}`);\n    const monthIndex = MONTHS.findIndex(mo => mo.toLowerCase() === m[1].toLowerCase());\n    return new Date(Date.UTC(parseInt(m[3]), monthIndex, parseInt(m[2])));\n}\nfunction formatErpDate(date) {\n    return `${MONTHS[date.getUTCMonth()].toUpperCase()} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;\n}\n\nconst items = $input.all();\nconst rows = [];\nfor (const item of items) {\n    const { startDate, endDate, purposeList } = item.json;\n    const cursor = parseErpDate(startDate);\n    const end = parseErpDate(endDate);\n    while (cursor <= end) {\n        rows.push({ duration: '1 DAY', workAssignment: purposeList, date: formatErpDate(cursor), accomplishments: '' });\n        cursor.setUTCDate(cursor.getUTCDate() + 1);\n    }\n}\nrows.sort((a, b) => parseErpDate(a.date) - parseErpDate(b.date));\n\nlet dateRange = '';\n\nif (rows.length) {\n    const firstDate = parseErpDate(rows[0].date);\n\n    const year = firstDate.getUTCFullYear();\n    const month = firstDate.getUTCMonth();\n\n    let periodStart, periodEnd;\n\n    if (firstDate.getUTCDate() <= 15) {\n        // First payroll period (1–15)\n        periodStart = new Date(Date.UTC(year, month, 1));\n        periodEnd = new Date(Date.UTC(year, month, 15));\n    } else {\n        // Second payroll period (16–end of month)\n        periodStart = new Date(Date.UTC(year, month, 16));\n        periodEnd = new Date(Date.UTC(year, month + 1, 0)); // Last day of month\n    }\n\n    dateRange = `${formatErpDate(periodStart)} - ${formatErpDate(periodEnd)}`;\n}\n\nreturn [{ json: { rows, date_range: dateRange } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        96
+      ],
+      "id": "fe111b07-04fb-46fe-9acd-fa82cd4e89db",
+      "name": "9. JSON Format to Send to Express JS Server"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -496,
+        -384
+      ],
+      "id": "4c3713fc-0e64-4446-9efb-a6589769a74d",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:4000/generate-report",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "INSERT-API-KEY-OF-EXPRESS-JS-SERVER-HERE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        96
+      ],
+      "id": "3de4acfb-3c31-4cbb-a916-bcf24ab14bc1",
+      "name": "10. Generate Automatic Download Link of the Form Completed"
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = new Date();\n\nconst day = today.getDate();\nconst lastDay = new Date(\n    today.getFullYear(),\n    today.getMonth() + 1,\n    0\n).getDate();\n\nconst shouldRun =\n    day === 13 ||\n    day === 15 ||\n    day === lastDay - 3 ||\n    day === lastDay - 1;\n\nif (!shouldRun) {\n    return [];\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        -384
+      ],
+      "id": "047cd877-5c84-46c4-962a-b41027a056e4",
+      "name": "Schedule the Trigger Every 13th and 28th"
+    }
+  ],
+  "connections": {
+    "2. POST Login (No Redirect)": {
+      "main": [
+        [
+          {
+            "node": "3. GET Protected Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. GET Protected Page": {
+      "main": [
+        [
+          {
+            "node": "4. GET Filtered Pass Slips",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. GET Filtered Pass Slips": {
+      "main": [
+        [
+          {
+            "node": "5. Get List of Pass Slips within Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Get List of Pass Slips within Date": {
+      "main": [
+        [
+          {
+            "node": "6. Loop Through Each Pass Slips' Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Loop Through Each Pass Slips' Details": {
+      "main": [
+        [
+          {
+            "node": "7. Extract Purpose of Business",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. GET Initial Cookie": {
+      "main": [
+        [
+          {
+            "node": "2. POST Login (No Redirect)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Extract Purpose of Business": {
+      "main": [
+        [
+          {
+            "node": "8. Format \"purpose\" as lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. Format \"purpose\" as lists": {
+      "main": [
+        [
+          {
+            "node": "9. JSON Format to Send to Express JS Server",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9. JSON Format to Send to Express JS Server": {
+      "main": [
+        [
+          {
+            "node": "10. Generate Automatic Download Link of the Form Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Schedule the Trigger Every 13th and 28th",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10. Generate Automatic Download Link of the Form Completed": {
+      "main": [
+        []
+      ]
+    },
+    "Schedule the Trigger Every 13th and 28th": {
+      "main": [
+        [
+          {
+            "node": "1. GET Initial Cookie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9370001aec51f67a3f8896157de32b102e7dc6c887a1267d8e31eefae463f28a"
+  }
+}
